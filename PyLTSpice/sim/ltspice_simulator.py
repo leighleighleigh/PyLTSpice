@@ -34,10 +34,15 @@ class LTspice(Simulator):
 
     """Searches on the any usual locations for a simulator"""
     if sys.platform == "linux":
+        bottles_executable = bool(os.environ.get("LTSPICE_BOTTLE",True))
+
         spice_folder = os.environ.get("LTSPICEFOLDER")
         spice_executable = os.environ.get("LTSPICEEXECUTABLE")
-
-        if spice_folder and spice_executable:
+        
+        if bottles_executable:
+            spice_exe = ["/usr/bin/flatpak","run","--command=bottles-cli","com.usebottles.bottles","run","-p","XVIIx64","-b","LTSpice","--"]
+            process_name = "C:\Program Files\LTC\LTspiceXVII\XVIIx64.exe"
+        elif spice_folder and spice_executable:
             spice_exe = ["wine", os.path.join(spice_folder, spice_executable)]
             process_name = spice_executable
         elif spice_folder:
@@ -179,8 +184,17 @@ class LTspice(Simulator):
         circuit_file = Path(circuit_file)
         if sys.platform == 'darwin':
             NotImplementedError("In this platform LTSpice doesn't have netlist generation capabilities")
-        cmd_netlist = cls.spice_exe + ['-netlist'] + [circuit_file.as_posix()]
-        # print(f'Creating netlist file from "{circuit_file}"', end='...')
+
+        bottles_executable = bool(os.environ.get("LTSPICE_BOTTLE",True))
+
+        if bottles_executable:
+            circuit_file_str = "Z:/" + circuit_file.as_posix()
+        else:
+            circuit_file_str = circuit_file.as_posix()
+
+        cmd_netlist = cls.spice_exe + ['-netlist'] + [f"'{circuit_file_str}'"]
+        print(f'Creating netlist file from "{circuit_file_str}"', end='...')
+        print(' '.join(cmd_netlist))
         error = run_function(cmd_netlist)
 
         if error == 0:
