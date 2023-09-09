@@ -169,11 +169,27 @@ class LTspice(Simulator):
             raise ValueError("Invalid switch for class ")
 
     @classmethod
-    def run(cls, netlist_file, cmd_line_switches, timeout):
-        if sys.platform == 'darwin':
-            cmd_run = cls.spice_exe + ['-b'] + [netlist_file] + cmd_line_switches
+    def run(cls, netlist_file : Path, cmd_line_switches, timeout):
+
+        if not isinstance(netlist_file, Path):
+            raise ValueError("netlist_file must be a Path")
+
+        bottles_executable = bool(os.environ.get("LTSPICE_BOTTLE",True))
+
+        if bottles_executable:
+            netlist_file_str = "Z:/" + netlist_file.absolute().as_posix()
+            netlist_file_str = f"'{netlist_file_str}'"
         else:
-            cmd_run = cls.spice_exe + ['-Run'] + ['-b'] + [netlist_file] + cmd_line_switches
+            netlist_file_str = f"'{netlist_file.absolute().as_posix()}'"
+
+        if sys.platform == 'darwin':
+            cmd_run = cls.spice_exe + ['-b'] + [netlist_file_str] + cmd_line_switches
+        else:
+            cmd_run = cls.spice_exe + ['-Run'] + ['-b'] + [netlist_file_str] + cmd_line_switches
+
+        print(f'run() file "{netlist_file_str}"...')
+        print(' '.join(cmd_run))
+
         # start execution
         return run_function(cmd_run, timeout=timeout)
 
@@ -189,10 +205,11 @@ class LTspice(Simulator):
 
         if bottles_executable:
             circuit_file_str = "Z:/" + circuit_file.as_posix()
+            circuit_file_str = f"'{circuit_file_str}'"
         else:
-            circuit_file_str = circuit_file.as_posix()
+            circuit_file_str = f"'{circuit_file.as_posix()}'"
 
-        cmd_netlist = cls.spice_exe + ['-netlist'] + [f"'{circuit_file_str}'"]
+        cmd_netlist = cls.spice_exe + ['-netlist'] + [circuit_file_str]
         print(f'Creating netlist file from "{circuit_file_str}"', end='...')
         print(' '.join(cmd_netlist))
         error = run_function(cmd_netlist)
